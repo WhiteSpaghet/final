@@ -1,69 +1,93 @@
-import argparse
+import sys
 from src.repositorio import RepositorioProcesos
 from src.scheduler import FCFSScheduler, RoundRobinScheduler
 from src.metrics import Metrics
+from src.proceso import Proceso
+
 
 def main():
-    parser = argparse.ArgumentParser(description='Simulador de planificación de CPU')
-    group = parser.add_mutually_exclusive_group(required=True)
-    group.add_argument('--add', nargs=3, metavar=('PID','DURACION','PRIORIDAD'), help='Agregar un proceso')
-    group.add_argument('--list', action='store_true', help='Listar procesos registrados')
-    group.add_argument('--run', action='store_true', help='Ejecutar planificación')
-
-    parser.add_argument('--algoritmo', choices=['FCFS','RR'], default='FCFS', help='Algoritmo de planificación')
-    parser.add_argument('--quantum', type=int, default=1, help='Quantum para Round-Robin')
-    parser.add_argument('--input', help='Archivo JSON/CSV con procesos')
-    parser.add_argument('--output', help='Guardar resultados')
-    args = parser.parse_args()
-
     repo = RepositorioProcesos()
-    # Cargar persistencia si se provee input
-    if args.input:
-        if args.input.endswith('.json'):
-            repo.cargar_json(args.input)
-        else:
-            repo.cargar_csv(args.input)
+    print("Simulador de planificación de CPU")
 
-    if args.add:
-        pid, duracion, prioridad = args.add
-        try:
-            p = Proceso(pid, int(duracion), int(prioridad))
-            repo.agregar(p)
-            print(f"Proceso agregado: {pid}, duracion={duracion}, prioridad={prioridad}")
-        except ValueError as e:
-            print(f"Error al agregar proceso: {e}")
-            return 1
-        # Guardar cambios si output
-        if args.output:
-            if args.output.endswith('.json'):
-                repo.guardar_json(args.output)
+    while True:
+        print("Menú:")
+        print("1. Agregar proceso")
+        print("2. Listar procesos")
+        print("3. Cargar procesos desde archivo")
+        print("4. Guardar procesos a archivo")
+        print("5. Ejecutar planificación")
+        print("6. Salir")
+        opcion = input("Selecciona una opción [1-6]: ").strip()
+
+        if opcion == '1':
+            pid = input("PID: ").strip()
+            dur = input("Duración (int): ").strip()
+            pri = input("Prioridad (int): ").strip()
+            try:
+                p = Proceso(pid, int(dur), int(pri))
+                repo.agregar(p)
+                print(f"Proceso {pid} agregado.")
+            except Exception as e:
+                print(f"Error: {e}")
+
+        elif opcion == '2':
+            procesos = repo.listar()
+            if not procesos:
+                print("No hay procesos registrados.")
             else:
-                repo.guardar_csv(args.output)
-        return 0
+                for p in procesos:
+                    print(f"PID={p.pid}, duracion={p.duracion}, prioridad={p.prioridad}")
 
-    if args.list:
-        procesos = repo.listar()
-        if not procesos:
-            print("No hay procesos registrados.")
+        elif opcion == '3':
+            path = input("Ruta de archivo JSON/CSV: ").strip()
+            try:
+                if path.endswith('.json'):
+                    repo.cargar_json(path)
+                else:
+                    repo.cargar_csv(path)
+                print(f"Procesos cargados desde {path}.")
+            except Exception as e:
+                print(f"Error al cargar: {e}")
+
+        elif opcion == '4':
+            path = input("Ruta de salida JSON/CSV: ").strip()
+            try:
+                if path.endswith('.json'):
+                    repo.guardar_json(path)
+                else:
+                    repo.guardar_csv(path)
+                print(f"Procesos guardados en {path}.")
+            except Exception as e:
+                print(f"Error al guardar: {e}")
+
+        elif opcion == '5':
+            if not repo.listar():
+                print("No hay procesos para planificar.")
+                continue
+            alg = input("Algoritmo (FCFS/RR): ").strip().upper()
+            if alg not in ('FCFS','RR'):
+                print("Algoritmo no válido.")
+                continue
+            quantum = 1
+            if alg == 'RR':
+                q = input("Quantum (int): ").strip()
+                try:
+                    quantum = int(q)
+                except:
+                    print("Quantum inválido, usando 1.")
+            scheduler = FCFSScheduler() if alg == 'FCFS' else RoundRobinScheduler(quantum)
+            gantt = scheduler.planificar(repo.listar())
+            metrics = Metrics.from_gantt(gantt)
+            print("Diagrama de Gantt:")
+            for pid, ini, fin in gantt:
+                print(f" {pid}: {ini} -> {fin}")
+            print("Métricas medias:", metrics)
+
+        elif opcion == '6':
+            print("Saliendo...")
+            return 0
         else:
-            print("Listado de procesos:")
-            for p in procesos:
-                print(f"PID={p.pid}, duracion={p.duracion}, prioridad={p.prioridad}")
-        return 0
+            print("Opción no válida.")
 
-    if args.run:
-        procesos = repo.listar()
-        if not procesos:
-            print("No hay procesos cargados. Use --add o --input para especificar procesos.")
-            return 1
-        scheduler = FCFSScheduler() if args.algoritmo == 'FCFS' else RoundRobinScheduler(args.quantum)
-        gantt = scheduler.planificar(procesos)
-        metrics = Metrics.from_gantt(gantt)
-        print('Diagrama de Gantt:', gantt)
-        print('Métricas medias:', metrics)
-        if args.output:
-            # Serializar resultados según extensión si se desea
-            pass
-        return 0
-
-    return 0
+if __name__ == '__main__':
+    sys.exit(main())
