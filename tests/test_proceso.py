@@ -1,3 +1,37 @@
-import pytest
-from src.proceso import Proceso
-# Pruebas para validación de PID y atributos
+import argparse
+from src.repositorio import RepositorioProcesos
+from src.scheduler import FCFSScheduler, RoundRobinScheduler
+from src.metrics import Metrics
+
+def main():
+    parser = argparse.ArgumentParser(description='Simulador de planificación de CPU')
+    parser.add_argument('--algoritmo', choices=['FCFS','RR'], default='FCFS', help='Algoritmo de planificación (por defecto FCFS)')
+    parser.add_argument('--quantum', type=int, default=1, help='Quantum para Round-Robin')
+    parser.add_argument('--input', help='Archivo JSON/CSV con procesos')
+    parser.add_argument('--output', help='Guardar resultados')
+    args = parser.parse_args()
+
+    repo = RepositorioProcesos()
+    if args.input:
+        if args.input.endswith('.json'):
+            repo.cargar_json(args.input)
+        else:
+            repo.cargar_csv(args.input)
+
+    procesos = repo.listar()
+    if not procesos:
+        print("No hay procesos cargados. Usa --input para especificar un archivo de procesos.")
+        return 1
+
+    scheduler = FCFSScheduler() if args.algoritmo == 'FCFS' else RoundRobinScheduler(args.quantum)
+
+    gantt = scheduler.planificar(procesos)
+    metrics = Metrics.from_gantt(gantt)
+    print('Diagrama de Gantt:', gantt)
+    print('Métricas medias:', metrics)
+
+    if args.output:
+        # Serializar resultados según extensión
+        pass
+
+    return 0
