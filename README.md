@@ -8,14 +8,15 @@ https://github.com/WhiteSpaghet/final.git
 - `src/`: paquete principal con la lógica.
 - `tests/`: pruebas unitarias con pytest.
 
-## Instalación\`\`\`bash
+## Instalación
+```bash
 python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
 
 
 USO
-./main.py --algoritmo FCFS --input procesos.json
+./main.py --input procesos.json --algoritmo RR --quantum 2
 
 TESTS
 pytest

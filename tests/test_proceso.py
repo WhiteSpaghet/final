@@ -1,37 +1,18 @@
-import argparse
-from src.repositorio import RepositorioProcesos
-from src.scheduler import FCFSScheduler, RoundRobinScheduler
-from src.metrics import Metrics
+import pytest
+from src.proceso import Proceso
 
-def main():
-    parser = argparse.ArgumentParser(description='Simulador de planificación de CPU')
-    parser.add_argument('--algoritmo', choices=['FCFS','RR'], default='FCFS', help='Algoritmo de planificación (por defecto FCFS)')
-    parser.add_argument('--quantum', type=int, default=1, help='Quantum para Round-Robin')
-    parser.add_argument('--input', help='Archivo JSON/CSV con procesos')
-    parser.add_argument('--output', help='Guardar resultados')
-    args = parser.parse_args()
 
-    repo = RepositorioProcesos()
-    if args.input:
-        if args.input.endswith('.json'):
-            repo.cargar_json(args.input)
-        else:
-            repo.cargar_csv(args.input)
+def test_crear_proceso_valido():
+    p = Proceso('P1', 5, 1)
+    assert p.pid == 'P1'
+    assert p.duracion == 5
+    assert p.prioridad == 1
 
-    procesos = repo.listar()
-    if not procesos:
-        print("No hay procesos cargados. Usa --input para especificar un archivo de procesos.")
-        return 1
-
-    scheduler = FCFSScheduler() if args.algoritmo == 'FCFS' else RoundRobinScheduler(args.quantum)
-
-    gantt = scheduler.planificar(procesos)
-    metrics = Metrics.from_gantt(gantt)
-    print('Diagrama de Gantt:', gantt)
-    print('Métricas medias:', metrics)
-
-    if args.output:
-        # Serializar resultados según extensión
-        pass
-
-    return 0
+@pytest.mark.parametrize('pid', ['', 'P1'] )
+def test_pid_unico(pid):
+    Proceso.resetear_registro()
+    if pid == '':
+        with pytest.raises(ValueError): Proceso(pid, 3, 1)
+    else:
+        Proceso(pid, 3, 1)
+        with pytest.raises(ValueError): Proceso(pid, 4, 2)
