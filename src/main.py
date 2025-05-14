@@ -5,7 +5,7 @@ from src.metrics import Metrics
 
 def main():
     parser = argparse.ArgumentParser(description='Simulador de planificación de CPU')
-    parser.add_argument('--algoritmo', choices=['FCFS','RR'], required=True, help='Algoritmo de planificación')
+    parser.add_argument('--algoritmo', choices=['FCFS','RR'], default='FCFS', help='Algoritmo de planificación (por defecto FCFS)')
     parser.add_argument('--quantum', type=int, default=1, help='Quantum para Round-Robin')
     parser.add_argument('--input', help='Archivo JSON/CSV con procesos')
     parser.add_argument('--output', help='Guardar resultados')
@@ -19,6 +19,10 @@ def main():
             repo.cargar_csv(args.input)
 
     procesos = repo.listar()
+    if not procesos:
+        print("No hay procesos cargados. Usa --input para especificar un archivo de procesos.")
+        return 1
+
     scheduler = FCFSScheduler() if args.algoritmo == 'FCFS' else RoundRobinScheduler(args.quantum)
 
     gantt = scheduler.planificar(procesos)
